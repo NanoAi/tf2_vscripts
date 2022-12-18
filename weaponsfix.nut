@@ -26,7 +26,6 @@ function processWeapon( weapon ) {
             break;
         case 307: // Ullapool Caber
             weapon.RemoveAttribute("damage bonus");
-            weapon.AddAttribute("damage bonus", 2, -1);
             weapon.AddAttribute("mark for death", 1, -1);
             break;
         case 348: // Sharpened Volcano Fragment
@@ -37,24 +36,26 @@ function processWeapon( weapon ) {
     }
 }
 
-function OnGameEvent_player_hurt(p) {
+function OnGameEvent_player_hurt(p) {}
+
+function OnScriptHook_OnTakeDamage(p) {
     local itemIndex = null;
-    local weapon = null;
-    local ply = GetPlayerFromUserID(p.attacker);
-    local user = GetPlayerFromUserID(p.userid);
+    local ply = p.attacker;
+    local target = p.const_entity;
     
     if ( !ply ) { return; }
-    weapon = ply.GetActiveWeapon()
-
-    if ( weapon ) {
-        itemIndex = NetProps.GetPropInt(ply.GetActiveWeapon(), "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
+    if ( p.weapon ) {
+        itemIndex = NetProps.GetPropInt(p.weapon, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
         switch(itemIndex) {
             case 173:
                 ply.AddCondEx(Constants.ETFCond.TF_COND_PREVENT_DEATH, 3, ply);
                 ply.AddCondEx(Constants.ETFCond.TF_COND_MEDIGUN_UBER_BULLET_RESIST, 3, ply);
                 break;
             case 307:
-                ply.TakeDamage(9999, Constants.FDmgType.DMG_DISSOLVE, ply);
+                p.weapon.Kill();
+                p.damage = p.damage * 2;
+                ply.SetHealth(2);
+                ply.TakeDamage(999, Constants.FDmgType.DMG_DISSOLVE, ply);
                 break;
         }
     }
