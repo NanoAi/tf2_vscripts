@@ -15,6 +15,7 @@ function hookThink(){
     local canRun = (initTime + initDelay) < Time();
     if ( canRun ) {
         init();
+        printl("[INIT] Initializing Scripts...");
         clearThink("init");
     }
 }
