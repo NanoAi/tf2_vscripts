@@ -14,7 +14,8 @@ function OnScriptHook_OnTakeDamage(p)
     if (attacker.IsPlayer() && victim.IsPlayer()) {
         if ( plyIsFriendly(attacker, victim) ) {
             local spawnTime = getInScope(victim, "SpawnProtection")
-            if ( spawnTime && ( (spawnTime + 5) > Time() ) ) {
+            if ( spawnTime && ( (spawnTime + 7) > Time() ) ) {
+                attacker.AddCondEx(Constants.ETFCond.TF_COND_MARKEDFORDEATH, 3, attacker);
                 attacker.TakeDamageEx(p.inflictor, p.attacker, p.weapon, p.damage_force, p.damage_position, p.damage * 10, p.damage_type);
                 p.damage_force = Vector(0,0,0);
                 p.damage = 0;
