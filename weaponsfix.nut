@@ -36,7 +36,14 @@ function processWeapon( weapon ) {
     }
 }
 
-function OnGameEvent_player_hurt(p) {}
+function onClassDamage(ply) {
+    local plyClass = ply.GetPlayerClass(); 
+    switch(plyClass) {
+        case Constants.ETFClass.TF_CLASS_PYRO:
+            ply.AddCustomAttribute("move speed bonus", 1.2, 1);
+            break;
+    }
+}
 
 function OnScriptHook_OnTakeDamage(p) {
     local itemIndex = null;
@@ -45,6 +52,7 @@ function OnScriptHook_OnTakeDamage(p) {
     
     if ( !ply ) { return; }
     if ( p.weapon ) {
+        onClassDamage(ply);
         itemIndex = NetProps.GetPropInt(p.weapon, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
         switch(itemIndex) {
             case 173:
