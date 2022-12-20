@@ -1,4 +1,4 @@
-local useThinkHook = false;
+local useThinkHook = true;
 
 clearThink();
 
@@ -32,6 +32,9 @@ function processWeapon( weapon ) {
             weapon.AddAttribute("Set DamageType Ignite", 0, -1);
             weapon.AddAttribute("bleeding duration", 7, -1);
             break;
+        case 457: // The Postal Pummeler
+            weapon.AddAttribute("single wep deploy time decreased", 0.8, -1);
+            break;
     }
 }
 
@@ -64,6 +67,18 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
                 ply.SetHealth(2);
                 ply.TakeDamage(999, Constants.FDmgType.DMG_DISSOLVE, ply);
                 break;
+            case 457:
+                if ( target ) {
+                    local dir = ply.EyeAngles().Forward();
+                    p.damage = p.damage * 0.70;
+
+                    ply.SetAbsVelocity( Vector(0, 0, 300) );
+                    ply.ApplyAbsVelocityImpulse( dir * -200 );
+
+                    target.SetAbsVelocity( Vector(0, 0, 300) );
+                    target.ApplyAbsVelocityImpulse( dir * 200 );
+                }
+                break;
         }
     }
 });
@@ -80,10 +95,31 @@ hook.Add("ge_post_inventory_application", "weaponsfix.nut", function(p) {
     }
 });
 
+function processAttack(ply) {
+    local weapon = ply.GetActiveWeapon();
+    local itemIndex = NetProps.GetPropInt(weapon, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
+    local lookDir = ply.EyeAngles().Forward();
+    
+    if ( itemIndex == 457 ) {
+        if ( TraceLine(ply.EyePosition(), ply.EyePosition() + (lookDir * 70), ply) < 1 ) {
+            ply.SetAbsVelocity( Vector(0, 0, 300) );
+            ply.ApplyAbsVelocityImpulse( lookDir * -500 );
+            ply.TakeDamage(ply.GetMaxHealth() * 0.1, Constants.FDmgType.DMG_BLAST, ply);
+        }
+    }
+}
+
 function hookThink(){
     local ply = null
     while ( ply = Entities.FindByClassname(ply, "player") ) {
-        // Create NetProps for Degreaser.
+        local iButtons = NetProps.GetPropInt(ply, "m_nButtons");
+        if ( iButtons & Constants.FButtons.IN_ATTACK && !getInScope(ply, "isAttacking") ) {
+            processAttack(ply)
+            setInScope(ply, "isAttacking", true);
+        }
+        if ( !(iButtons & Constants.FButtons.IN_ATTACK) && getInScope(ply, "isAttacking") ) {
+            setInScope(ply, "isAttacking", null);
+        }
     }
 }
 
