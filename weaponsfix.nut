@@ -84,7 +84,7 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
     }
 });
 
-hook.Add("ge_post_inventory_application", "weaponsfix.nut", function(p) {
+function applyRebalance(p){ 
     local ply = GetPlayerFromUserID(p.userid)
     if ( !ply ) { return; }
 
@@ -94,7 +94,10 @@ hook.Add("ge_post_inventory_application", "weaponsfix.nut", function(p) {
             processWeapon(wep)
         }
     }
-});
+}
+
+hook.Add("ge_post_inventory_application", "weaponsfix.nut", applyRebalance);
+hook.Add("ge_player_spawn", "weaponsfix.nut", applyRebalance);
 
 function processAttack(ply) {
     local weapon = ply.GetActiveWeapon();
