@@ -34,14 +34,6 @@ local round = {
 // Actually do the things.
 printl("Loading Timer Script...");
 
-function exposeEnv(env, scope) {
-    foreach ( key, obj in env ) {
-        if ( !(key in scope) ) {
-            scope[key] <- obj
-        }
-    }
-}
-
 _roundLogic <-
 {
     settings = settings,
@@ -131,17 +123,17 @@ _roundLogic <-
     }
 }
 
-function OnGameEvent_teamplay_overtime_begin() {
+hook.Add("ge_teamplay_overtime_begin", "roundLogic.nut", function(p) {
     EntFire("roundTimer", "pause")
-}
+});
 
-function OnPostSpawn() {
+hook.Add("onpostspawn", "roundLogic.nut", function(p) {
     printl("Loading Timer Script...");
-    _roundLogic.createRoundTimer()
-    __CollectGameEventCallbacks(this)
-}
+    _roundLogic.createRoundTimer();
+    __CollectGameEventCallbacks(this);
+});
 
-function OnGameEvent_teamplay_round_active(p) {
+hook.Add("ge_teamplay_round_active", "roundLogic.nut", function(p) {
     _roundLogic.ctfScoreReset()
     
     if ( Entities.FindByName(null, "roundTimer") == null ) {
@@ -150,16 +142,16 @@ function OnGameEvent_teamplay_round_active(p) {
 
     EntFire("roundTimer", "restart")
     EntFire("roundTimer", "resume")
-}
+});
 
-function OnGameEvent_ctf_flag_captured(p) {
+ hook.Add("ge_ctf_flag_captured", "roundLogic.nut", function(p) {
     if ( InOvertime() && settings.suddenDeathOvertime ) {
         _roundLogic.ctfTeamWin(p.capping_team)
     } else {
         EntFire("roundTimer", "addtime", settings.bonusTimeOnCap.tostring())
         scoreData[ p.capping_team ] = p.capping_team_score;
     }
-}
+});
 
 SendToServerConsole("mp_restartgame_immediate 1")
 __CollectGameEventCallbacks(this)

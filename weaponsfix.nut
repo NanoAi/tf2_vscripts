@@ -1,6 +1,5 @@
 local useThinkHook = false;
 
-IncludeScript("boxfox.utils.nut", this);
 clearThink();
 
 function processWeapon( weapon ) {
@@ -40,12 +39,12 @@ function onClassDamage(ply) {
     local plyClass = ply.GetPlayerClass(); 
     switch(plyClass) {
         case Constants.ETFClass.TF_CLASS_PYRO:
-            ply.AddCustomAttribute("move speed bonus", 1.2, 1);
+            ply.AddCustomAttribute("move speed bonus", 1.15, 1);
             break;
     }
 }
 
-function OnScriptHook_OnTakeDamage(p) {
+hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
     local itemIndex = null;
     local ply = p.attacker;
     local target = p.const_entity;
@@ -67,9 +66,9 @@ function OnScriptHook_OnTakeDamage(p) {
                 break;
         }
     }
-}
+});
 
-function OnGameEvent_post_inventory_application(p) {
+hook.Add("ge_post_inventory_application", "weaponsfix.nut", function(p) {
     local ply = GetPlayerFromUserID(p.userid)
     if ( !ply ) { return; }
 
@@ -79,7 +78,7 @@ function OnGameEvent_post_inventory_application(p) {
             processWeapon(wep)
         }
     }
-}
+});
 
 function hookThink(){
     local ply = null

@@ -1,5 +1,3 @@
-IncludeScript("boxfox.utils.nut", this);
-
 function OnGameEvent_player_spawn(p) {
     local ply = GetPlayerFromUserID(p.userid);
     if ( ply ) {
@@ -7,8 +5,7 @@ function OnGameEvent_player_spawn(p) {
     }
 }
 
-function OnScriptHook_OnTakeDamage(p)
-{
+hook.Add("sh_OnTakeDamage", "friendlyfirelimit.nut", function(p) {
     local attacker = p.attacker;
     local victim = p.const_entity;
     if (attacker.IsPlayer() && victim.IsPlayer()) {
@@ -24,9 +21,9 @@ function OnScriptHook_OnTakeDamage(p)
             }
         }
     }
-}
+});
 
-function OnGameEvent_player_death(p) {
+hook.Add("ge_player_death", "weaponsfix.nut", function(p) {
     local attacker = GetPlayerFromUserID(p.attacker);
     local victim = GetPlayerFromUserID(p.userid);
     if ( !attacker || !victim ) { return; }
@@ -35,6 +32,6 @@ function OnGameEvent_player_death(p) {
         attacker.AddCondEx(Constants.ETFCond.TF_COND_MARKEDFORDEATH, 5, attacker);
         chatPrint(attacker, "[FRIEND KILLER] How could you...");
     }
-}
+});
 
 __CollectGameEventCallbacks(this);
