@@ -78,8 +78,6 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
 
                     target.SetAbsVelocity( Vector(0, 0, 300) );
                     target.ApplyAbsVelocityImpulse( dir * 200 );
-
-                    ply.TakeDamageEx(ply, ply, weapon, Vector(0,0,0), Vector(0,0,0), target.GetMaxHealth() * 0.10, Constants.FDmgType.DMG_BLAST);
                 }
                 break;
         }
@@ -106,7 +104,7 @@ function processAttack(ply) {
     if ( itemIndex == 457 ) {
         if ( TraceLine(ply.EyePosition(), ply.EyePosition() + (lookDir * 70), ply) < 1 ) {
             local force = (lookDir * -525);
-            ply.SetAbsVelocity( Vector(0, 0, 200) );
+            ply.SetAbsVelocity( ply.GetVelocity() + Vector(0, 0, 200) );
             ply.ApplyAbsVelocityImpulse( Vector(force.x, force.y, force.z * 0.15) );
 
             ply.DropFlag(true);
