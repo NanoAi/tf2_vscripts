@@ -33,7 +33,8 @@ function processWeapon( weapon ) {
             weapon.AddAttribute("bleeding duration", 7, -1);
             break;
         case 457: // The Postal Pummeler
-            weapon.AddAttribute("single wep deploy time decreased", 0.8, -1);
+            weapon.AddAttribute("single wep deploy time decreased", 0.7, -1);
+            weapon.AddAttribute("health from healers reduced", 0.75, -1);
             break;
     }
 }
@@ -104,8 +105,12 @@ function processAttack(ply) {
     
     if ( itemIndex == 457 ) {
         if ( TraceLine(ply.EyePosition(), ply.EyePosition() + (lookDir * 70), ply) < 1 ) {
-            ply.SetAbsVelocity( Vector(0, 0, 300) );
-            ply.ApplyAbsVelocityImpulse( (lookDir * -500) * Vector(1,1,0.8) );
+            local force = (lookDir * -525);
+            ply.SetAbsVelocity( Vector(0, 0, 200) );
+            ply.ApplyAbsVelocityImpulse( Vector(force.x, force.y, force.z * 0.15) );
+
+            ply.DropFlag(true);
+            ply.RemoveCond(Constants.ETFCond.TF_COND_HEALTH_BUFF);
             ply.TakeDamageEx(ply, ply, weapon, Vector(0,0,0), Vector(0,0,0), ply.GetMaxHealth() * 0.25, Constants.FDmgType.DMG_BLAST);
         }
     }
