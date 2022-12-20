@@ -68,7 +68,7 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
                 ply.TakeDamage(999, Constants.FDmgType.DMG_DISSOLVE, ply);
                 break;
             case 457:
-                if ( target ) {
+                if ( target && target != ply ) {
                     local dir = ply.EyeAngles().Forward();
                     p.damage = p.damage * 0.70;
 
@@ -77,6 +77,8 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
 
                     target.SetAbsVelocity( Vector(0, 0, 300) );
                     target.ApplyAbsVelocityImpulse( dir * 200 );
+
+                    ply.TakeDamageEx(ply, ply, weapon, Vector(0,0,0), Vector(0,0,0), target.GetMaxHealth() * 0.10, Constants.FDmgType.DMG_BLAST);
                 }
                 break;
         }
@@ -103,8 +105,8 @@ function processAttack(ply) {
     if ( itemIndex == 457 ) {
         if ( TraceLine(ply.EyePosition(), ply.EyePosition() + (lookDir * 70), ply) < 1 ) {
             ply.SetAbsVelocity( Vector(0, 0, 300) );
-            ply.ApplyAbsVelocityImpulse( lookDir * -500 );
-            ply.TakeDamage(ply.GetMaxHealth() * 0.1, Constants.FDmgType.DMG_BLAST, ply);
+            ply.ApplyAbsVelocityImpulse( (lookDir * -500) * Vector(1,1,0.8) );
+            ply.TakeDamageEx(ply, ply, weapon, Vector(0,0,0), Vector(0,0,0), ply.GetMaxHealth() * 0.25, Constants.FDmgType.DMG_BLAST);
         }
     }
 }
@@ -113,7 +115,7 @@ function hookThink(){
     local ply = null
     while ( ply = Entities.FindByClassname(ply, "player") ) {
         local iButtons = NetProps.GetPropInt(ply, "m_nButtons");
-        if ( iButtons & Constants.FButtons.IN_ATTACK && !getInScope(ply, "isAttacking") ) {
+        if ( (iButtons & Constants.FButtons.IN_ATTACK) && !getInScope(ply, "isAttacking") ) {
             processAttack(ply)
             setInScope(ply, "isAttacking", true);
         }
