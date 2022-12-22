@@ -14,6 +14,8 @@ function processWeapon( ply, weapon ) {
         case 215: // Degreaser
             weapon.RemoveAttribute("airblast cost increased");
             weapon.AddAttribute("airblast cost increased", 1, -1);
+            weapon.AddAttribute("mod mini-crit airborne", 1, -1);
+            weapon.AddAttribute("SET BONUS: calling card on kill", 4, -1);
             break;
         case 173: // VitaSaw
             weapon.AddAttribute("single wep deploy time decreased", 0.8, -1);
