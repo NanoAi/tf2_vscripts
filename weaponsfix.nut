@@ -2,7 +2,7 @@ local useThinkHook = true;
 
 clearThink();
 
-function processWeapon( weapon ) {
+function processWeapon( ply, weapon ) {
     //ref: https://wiki.alliedmods.net/Team_fortress_2_item_definition_indexes
     //ref: https://wiki.teamfortress.com/wiki/List_of_item_attributes
     local itemIndex = getItemIndex(weapon);
@@ -35,6 +35,22 @@ function processWeapon( weapon ) {
         case 457: // The Postal Pummeler
             weapon.AddAttribute("single wep deploy time decreased", 0.7, -1);
             weapon.AddAttribute("health from healers reduced", 0.75, -1);
+            break;
+        case 741: // Rainblower
+            weapon.RemoveAttribute("pyrovision only DISPLAY ONLY");
+            weapon.AddAttribute("health from healers reduced", 0.75, -1);
+            weapon.AddAttribute("patient overheal penalty", 0, -1);
+            
+            weapon.AddAttribute("airblast cost increased", 5, -1);
+            weapon.AddAttribute("bombinomicon effect on death", 1, -1);
+            weapon.AddAttribute("charged airblast", 1, -1);
+
+            weapon.AddAttribute("flame life bonus", 0.25, -1);
+            weapon.AddAttribute("slow enemy on hit", 0.50, -1);
+
+            if ( !ply.InCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY) ) {
+                ply.AddCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
+            }
             break;
     }
 }
@@ -88,10 +104,12 @@ function applyRebalance(p){
     local ply = GetPlayerFromUserID(p.userid)
     if ( !ply ) { return; }
 
+    ply.RemoveCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
+
     for ( local i = 0; i < 7; i++ ) {
         local wep = NetProps.GetPropEntityArray(ply, "m_hMyWeapons", i)
         if ( wep != null ) {
-            processWeapon(wep)
+            processWeapon(ply, wep)
         }
     }
 }
