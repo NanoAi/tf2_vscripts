@@ -21,8 +21,8 @@ function OnGameEvent_teamplay_overtime_begin(p) {
     hook.Call("ge_teamplay_overtime_begin", p);
 }
 
-function OnPostSpawn() {
-    hook.Call("onpostspawn", null);
+function OnScriptHook_OnPostSpawn() {
+    hook.Call("sh_onpostspawn", null);
 }
 
 function OnGameEvent_teamplay_round_active(p) {
@@ -33,5 +33,4 @@ function OnGameEvent_ctf_flag_captured(p) {
     hook.Call("ge_ctf_flag_captured", p);
 }
 
-// Collect Callbacks (Apply Hooks)
-__CollectGameEventCallbacks(this);
+chatPrint(null, "Hooks have been setup!");

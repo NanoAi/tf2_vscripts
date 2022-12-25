@@ -33,5 +33,3 @@ hook.Add("ge_player_death", "weaponsfix.nut", function(p) {
         chatPrint(attacker, "[FRIEND KILLER] How could you...");
     }
 });
-
-__CollectGameEventCallbacks(this);

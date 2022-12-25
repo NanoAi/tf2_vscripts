@@ -27,6 +27,29 @@ function setInScope(ent, index, value) {
     }
 }
 
+function plyIsJumping(ply) {
+    // `ply.IsJumping()` doesn't seem to be reliable when encountering water, etc.
+    if ( ply.IsJumping() ) {
+        return true
+    }
+
+    local iButtons = NetProps.GetPropInt(ply, "m_nButtons");
+    local mtMoveType = NetProps.GetPropInt(ply, "m_MoveType");
+    local iWaterLevel = NetProps.GetPropInt(ply, "m_nWaterLevel");
+
+    local keyInJump = (iButtons & Constants.FButtons.IN_JUMP);
+
+    local iGroundEntity = NetProps.GetPropInt(ply, "m_hGroundEntity");
+    local bInWater = (iWaterLevel > 2 /* WL_Waist */);
+    local bOnGround = (!bInWater && mtMoveType == Constants.EMoveType.MOVETYPE_WALK && iGroundEntity != -1);
+
+    if ( keyInJump && bOnGround ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 function plyIsFriendly(attacker, victim) {
     if ( attacker != victim && attacker.GetTeam() == victim.GetTeam() ) {
         return true;
@@ -64,7 +87,7 @@ hook <-
             hooks[hook] <- {};
         }
 
-        hooks[hook][key] <- null;
+        delete hooks[hook][key];
 
         if ( hooks[hook].len() <= 0 ) {
             hooks[hook] <- null;
@@ -83,16 +106,54 @@ hook <-
     }
 }
 
-function onEntityTick(callback, context) {
-    local e = SpawnEntity("info_target", {
+local bfx_jobs = [];
+job <-
+{
+    clock = Time()
+
+    function Create() {
+        local e = SpawnEntityFromTable("info_target", {
+            classname = "move_rope",
+            targetname = "bfx_job_processor"
+        });
+        // Activate the think hook.
+        if ( e.ValidateScriptScope() ) {
+            // There doesn't seem to be a way to use a proper GameTick think hook.
+            e.GetScriptScope()["Think"] <- function() {
+                if ( job.clock > Time() ) return;
+                while( bfx_jobs.len() > 0 ) {
+                    local callback = bfx_jobs.pop();
+                    callback();
+                }
+            }
+            AddThinkToEnt(e, "Think");
+        }
+    }
+
+    function Add(callback) {
+        bfx_jobs.push(callback);
+        job.clock = Time() + 0.03;
+    }
+
+    function startAt( time ) {
+        job.clock = time;
+    }
+}
+
+function onEntityTick(callback) {
+    local e = SpawnEntityFromTable("info_target", {
         classname = "move_rope",
         targetname = "bfx_info_tick"
     });
+    printl( e.ValidateScriptScope() );
+    // Activate the think hook.
     if ( e.ValidateScriptScope() ) {
+        // There doesn't seem to be a way to use a proper GameTick think hook.
         e.GetScriptScope()["Think"] <- function() {
+            Think = null;
             callback();
             e.Kill();
-        };
+        }
         AddThinkToEnt(e, "Think");
     }
 }
@@ -119,4 +180,9 @@ function createThink(callback, id = "base") {
         e.GetScriptScope()["Think"] <- callback;
         AddThinkToEnt(e, "Think");
     }
+}
+
+function IncludeScriptPrint(file, scope = null) {
+    chatPrint(null, "  Loading: " + file);
+    IncludeScript(file, scope);
 }

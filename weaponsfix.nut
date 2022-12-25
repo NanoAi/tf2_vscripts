@@ -14,7 +14,6 @@ function processWeapon( ply, weapon ) {
         case 215: // Degreaser
             weapon.RemoveAttribute("airblast cost increased");
             weapon.AddAttribute("airblast cost increased", 1, -1);
-            weapon.AddAttribute("mod mini-crit airborne", 1, -1);
             weapon.AddAttribute("SET BONUS: calling card on kill", 4, -1);
             break;
         case 173: // VitaSaw
@@ -38,8 +37,12 @@ function processWeapon( ply, weapon ) {
             weapon.AddAttribute("single wep deploy time decreased", 0.7, -1);
             weapon.AddAttribute("health from healers reduced", 0.75, -1);
             break;
+        case 1178: // Dragon's Fury
+            weapon.AddAttribute("no crit boost", 1, -1);
+            weapon.AddAttribute("max health additive bonus", 25, -1);
+            weapon.AddAttribute("airblast cost increased", 300, -1);
+            break;
         case 741: // Rainblower
-            weapon.RemoveAttribute("pyrovision only DISPLAY ONLY");
             weapon.AddAttribute("health from healers reduced", 0.75, -1);
             weapon.AddAttribute("patient overheal penalty", 0, -1);
             
@@ -47,12 +50,19 @@ function processWeapon( ply, weapon ) {
             weapon.AddAttribute("bombinomicon effect on death", 1, -1);
             weapon.AddAttribute("charged airblast", 1, -1);
 
-            weapon.AddAttribute("flame life bonus", 0.25, -1);
+            weapon.AddAttribute("flame life bonus", 1.25, -1);
             weapon.AddAttribute("slow enemy on hit", 0.50, -1);
 
-            if ( !ply.InCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY) ) {
-                ply.AddCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
-            }
+            job.Add(function(){
+                if ( !ply.InCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY) ) {
+                    ply.AddCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
+                }
+            });
+            break;
+        case 1098: // The Classic (Sniper)
+            weapon.AddAttribute("mult sniper charge after bodyshot", 0.1, -1);
+            weapon.AddAttribute("crit vs disguised players", 1, -1);
+            weapon.AddAttribute("explosive sniper shot", 1, -1);
             break;
     }
 }
@@ -66,16 +76,58 @@ function onClassDamage(ply) {
     }
 }
 
+function rhPush(ply, target, weapon) {
+    local recentHits = getInScope(ply, "recentHits");
+    local data = {
+        target = target,
+        weapon = weapon,
+        time = Time()
+    }
+    recentHits.push(data);
+    if ( recentHits.len() > 4 ) {
+        recentHits.pop(); // Remove a single value.
+    }
+    setInScope(ply, "recentHits", recentHits);
+}
+
+function rhGet(ply) {
+    return getInScope(ply, "recentHits");
+}
+
 hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
     local itemIndex = null;
     local ply = p.attacker;
     local target = p.const_entity;
+    local dmgTotal = p.damage + (p.damage_bonus || 0);
     
     if ( !ply ) { return; }
     if ( p.weapon ) {
         onClassDamage(ply);
         itemIndex = NetProps.GetPropInt(p.weapon, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
         switch(itemIndex) {
+            case 1098: // The Classic (Sniper)
+                if ( (target && target.IsPlayer()) && (target.GetHealth() - dmgTotal) > 0 ) {
+                    ply.AddCondEx(Constants.ETFCond.TF_COND_STEALTHED_USER_BUFF, 3, ply);
+                }
+                break;
+            case 1178:
+                if ( target && target.IsPlayer() ) {
+                    rhPush(ply, target, p.weapon);
+                }
+                break;
+            case 215:
+                if ( target && target.IsPlayer() ) {
+                    local condA = target.InCond(Constants.ETFCond.TF_COND_GAS);
+                    local condB = target.InCond(Constants.ETFCond.TF_COND_KNOCKED_INTO_AIR);
+                    local condC = target.InAirDueToExplosion() || target.InAirDueToKnockback();
+                    if ( condA || condB || condC ) {
+                        if ( !p.damage_bonus ) p.damage_bonus = 0;
+                        p.damage_bonus = p.damage_bonus + (p.damage * 0.45);
+                        p.damage_bonus_provider = ply;
+                        p.crit_type = 1;
+                    }
+                }
+                break;
             case 173:
                 ply.AddCondEx(Constants.ETFCond.TF_COND_PREVENT_DEATH, 3, ply);
                 ply.AddCondEx(Constants.ETFCond.TF_COND_MEDIGUN_UBER_BULLET_RESIST, 3, ply);
@@ -107,6 +159,7 @@ function applyRebalance(p){
     if ( !ply ) { return; }
 
     ply.RemoveCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
+    setInScope(ply, "recentHits", []);
 
     for ( local i = 0; i < 7; i++ ) {
         local wep = NetProps.GetPropEntityArray(ply, "m_hMyWeapons", i)
@@ -119,12 +172,13 @@ function applyRebalance(p){
 hook.Add("ge_post_inventory_application", "weaponsfix.nut", applyRebalance);
 hook.Add("ge_player_spawn", "weaponsfix.nut", applyRebalance);
 
-function processAttack(ply) {
+function processAttack(ply, type) {
     local weapon = ply.GetActiveWeapon();
     local itemIndex = NetProps.GetPropInt(weapon, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
     local lookDir = ply.EyeAngles().Forward();
+    local baseAmmo = NetProps.GetPropIntArray(ply, "m_iAmmo", 1);
     
-    if ( itemIndex == 457 ) {
+    if ( itemIndex == 457 && type == 1 ) {
         if ( TraceLine(ply.EyePosition(), ply.EyePosition() + (lookDir * 70), ply) < 1 ) {
             local force = (lookDir * -525);
             ply.SetAbsVelocity( ply.GetVelocity() + Vector(0, 0, 200) );
@@ -135,17 +189,62 @@ function processAttack(ply) {
             ply.TakeDamageEx(ply, ply, weapon, Vector(0,0,0), Vector(0,0,0), ply.GetMaxHealth() * 0.25, Constants.FDmgType.DMG_BLAST);
         }
     }
+
+    if ( itemIndex == 1178 && type == 2 && baseAmmo > 20 ) {
+        local count = 0;
+        local rh = rhGet(ply);
+        local curHealth = ply.GetHealth();
+
+        while ( rh.len() > 0 ) {
+            local p = rh.pop();
+            local target = p.target;
+            if ( weapon != p.weapon ) continue; // Must be the same weapon.
+            if ( target && target.InCond(Constants.ETFCond.TF_COND_BURNING) && target.GetHealth() > 0 ) {
+                target.RemoveCond(Constants.ETFCond.TF_COND_BURNING);
+                ply.AddCond(Constants.ETFCond.TF_COND_BURNING);
+                count++;
+            }
+        }
+
+        if ( count > 0 ) {
+            // Play a cool effect.
+            DispatchParticleEffect("rd_robot_explosion", ply.GetOrigin(), Vector(0,0,0));
+
+            ply.ViewPunch(QAngle(10,0,0));
+            weapon.AddAttribute("hidden primary max ammo bonus", 0.075, -1);
+            ply.Regenerate(true);
+
+            // Undo the regen... (kinda)
+            ply.SetHealth(curHealth);
+            ply.TakeDamage(1, Constants.FDmgType.DMG_BURN, ply);
+            weapon.RemoveAttribute("hidden primary max ammo bonus");
+
+            setInScope(ply, "recentHits", []);
+            ply.AddCondEx(Constants.ETFCond.TF_COND_CRITBOOSTED, count, weapon);
+        }
+    }
 }
 
 function hookThink(){
     local ply = null
     while ( ply = Entities.FindByClassname(ply, "player") ) {
         local iButtons = NetProps.GetPropInt(ply, "m_nButtons");
-        if ( (iButtons & Constants.FButtons.IN_ATTACK) && !getInScope(ply, "isAttacking") ) {
-            processAttack(ply)
-            setInScope(ply, "isAttacking", true);
+        local attack1 = (iButtons & Constants.FButtons.IN_ATTACK);
+        local attack2 = (iButtons & Constants.FButtons.IN_ATTACK2);
+
+        if ( !getInScope(ply, "isAttacking") ) {
+            if ( attack1 ) {
+                processAttack(ply, 1);
+                setInScope(ply, "isAttacking", true);
+            }
+
+            if ( attack2 ) {
+                processAttack(ply, 2);
+                setInScope(ply, "isAttacking", true);
+            }
         }
-        if ( !(iButtons & Constants.FButtons.IN_ATTACK) && getInScope(ply, "isAttacking") ) {
+
+        if ( !attack1 && !attack2 && getInScope(ply, "isAttacking") ) {
             setInScope(ply, "isAttacking", null);
         }
     }
@@ -153,6 +252,7 @@ function hookThink(){
 
 if ( useThinkHook ) {
     createThink(hookThink);
+    job.Create();
 }
 
 __CollectGameEventCallbacks(this);
