@@ -11,13 +11,17 @@ hook.Add("sh_OnTakeDamage", "friendlyfirelimit.nut", function(p) {
     if (attacker.IsPlayer() && victim.IsPlayer()) {
         if ( plyIsFriendly(attacker, victim) ) {
             local spawnTime = getInScope(victim, "SpawnProtection")
-            if ( spawnTime && ( (spawnTime + 7) > Time() ) ) {
+            if ( spawnTime && ( (spawnTime + 8) > Time() ) ) {
                 attacker.AddCondEx(Constants.ETFCond.TF_COND_MARKEDFORDEATH, 3, attacker);
                 attacker.TakeDamageEx(p.inflictor, p.attacker, p.weapon, p.damage_force, p.damage_position, p.damage * 10, p.damage_type);
                 p.damage_force = Vector(0,0,0);
                 p.damage = 0;
             } else {
                 setInScope(victim, "SpawnProtection", null)
+                if ( p.damage_bonus && p.damage_bonus > 0 ) {
+                    attacker.TakeDamageEx(p.inflictor, p.attacker, p.weapon, p.damage_force, p.damage_position, 10 + p.damage_bonus, p.damage_type);
+                    p.damage_bonus = 0;
+                }
             }
         }
     }
@@ -28,7 +32,7 @@ hook.Add("ge_player_death", "weaponsfix.nut", function(p) {
     local victim = GetPlayerFromUserID(p.userid);
     if ( !attacker || !victim ) { return; }
     if ( plyIsFriendly(attacker, victim) ) {
-        attacker.BleedPlayer(7);
+        attacker.BleedPlayer(9);
         attacker.AddCondEx(Constants.ETFCond.TF_COND_MARKEDFORDEATH, 5, attacker);
         chatPrint(attacker, "[FRIEND KILLER] How could you...");
     }
