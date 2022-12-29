@@ -17,11 +17,23 @@ function OnGameEvent_player_death(p) {
     hook.Call("ge_player_death", p);
 }
 
+function OnGameEvent_teamplay_round_start(p) {
+    hook.Call("ge_teamplay_round_start", p);
+}
+
+function OnGameEvent_teamplay_game_over(p) {
+    hook.Call("ge_teamplay_game_over", p);
+}
+
+function OnGameEvent_tf_game_over(p) {
+    hook.Call("ge_tf_game_over", p);
+}
+
 function OnGameEvent_teamplay_overtime_begin(p) {
     hook.Call("ge_teamplay_overtime_begin", p);
 }
 
-function OnScriptHook_OnPostSpawn() {
+function OnScriptHook_OnPostSpawn(p) {
     hook.Call("sh_onpostspawn", null);
 }
 

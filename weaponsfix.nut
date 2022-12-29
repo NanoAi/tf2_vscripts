@@ -38,6 +38,8 @@ function processWeapon( ply, weapon ) {
             weapon.AddAttribute("health from healers reduced", 0.75, -1);
             break;
         case 1178: // Dragon's Fury
+            weapon.RemoveAttribute("extinguish restores health");
+            weapon.AddAttribute("heal on kill", 5, -1);
             weapon.AddAttribute("no crit boost", 1, -1);
             weapon.AddAttribute("max health additive bonus", 25, -1);
             weapon.AddAttribute("airblast cost increased", 300, -1);
@@ -60,7 +62,8 @@ function processWeapon( ply, weapon ) {
             });
             break;
         case 1098: // The Classic (Sniper)
-            weapon.AddAttribute("mult sniper charge after bodyshot", 0.1, -1);
+            weapon.AddAttribute("damage penalty on bodyshot", 0.4, -1);
+            weapon.AddAttribute("mult sniper charge after bodyshot", 1.05, -1);
             weapon.AddAttribute("crit vs disguised players", 1, -1);
             weapon.AddAttribute("explosive sniper shot", 1, -1);
             break;
@@ -105,14 +108,51 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
         onClassDamage(ply);
         itemIndex = NetProps.GetPropInt(p.weapon, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
         switch(itemIndex) {
+            case 230: // The Sydney Sleeper
+                target.AddCondEx(Constants.ETFCond.TF_COND_MAD_MILK, 3, ply);
+                target.AddCustomAttribute("hit self on miss", 1, 2);
+                break;
+            case 638: // The Sharp Dresser
+                if ( target && target.IsPlayer() ) {
+                    local healTarget = target.GetHealTarget();
+                    target.AddCondEx(Constants.ETFCond.TF_COND_BLEEDING, 1.25, ply);
+                    if ( healTarget && healTarget.IsPlayer() ) {
+                        healTarget.AddCustomAttribute("move speed bonus", 0.80, 2);
+                        healTarget.AddCondEx(Constants.ETFCond.TF_COND_BLEEDING, 1.25, ply);
+                        healTarget.TakeDamageCustom(ply, ply, p.weapon, p.damage_force, p.damage_position, dmgTotal, p.damage_type, p.damage_custom);
+                        ply.AddCustomAttribute("max health additive penalty", -25, -1);
+                        job.Add(function(){
+                            if ( verifyEntity(ply) && ply.IsPlayer() ) {
+                                ply.SetSpyCloakMeter( 45 );
+                            }
+                        });
+                    }
+                }
+                break;
             case 1098: // The Classic (Sniper)
                 if ( (target && target.IsPlayer()) && (target.GetHealth() - dmgTotal) > 0 ) {
-                    ply.AddCondEx(Constants.ETFCond.TF_COND_STEALTHED_USER_BUFF, 3, ply);
+                    ply.AddCondEx(Constants.ETFCond.TF_COND_SPEED_BOOST, 1.5, ply);
                 }
                 break;
             case 1178:
                 if ( target && target.IsPlayer() ) {
+                    local dfBuff = getInScope(ply, "dragonsFuryBuff");
+                    if ( dfBuff && dfBuff.ammo > 0 && p.weapon == dfBuff.weapon ) {
+                        target.AddCond(Constants.ETFCond.TF_COND_GAS);
+
+                        p.damage_bonus = p.damage_bonus + (p.damage * ( 0.42 * dfBuff.mult ));
+                        p.crit_type = 1;
+                        dfBuff.ammo--;
+
+                        setInScope(ply, "dragonsFuryBuff", dfBuff);
+                    }
                     rhPush(ply, target, p.weapon);
+                    if ( target.InCond(Constants.ETFCond.TF_COND_GAS) ) {
+                        target.AddCustomAttribute("move speed bonus", 0.55, 1.25);
+                        target.AddCondEx( Constants.ETFCond.TF_COND_STUNNED, 1.27, ply );
+                        target.AddCondEx( Constants.ETFCond.TF_COND_FREEZE_INPUT, 0.55, ply );
+                        ply.AddCustomAttribute("dragons fury positive properties", 2, 3);
+                    }
                 }
                 break;
             case 215:
@@ -121,7 +161,7 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
                     local condB = target.InCond(Constants.ETFCond.TF_COND_KNOCKED_INTO_AIR);
                     local condC = target.InAirDueToExplosion() || target.InAirDueToKnockback();
                     if ( condA || condB || condC ) {
-                        if ( !p.damage_bonus ) p.damage_bonus = 0;
+                        p.damage_bonus = ( p.damage_bonus || 0 );
                         p.damage_bonus = p.damage_bonus + (p.damage * 0.45);
                         p.damage_bonus_provider = ply;
                         p.crit_type = 1;
@@ -139,7 +179,7 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
                 ply.TakeDamage(999, Constants.FDmgType.DMG_DISSOLVE, ply);
                 break;
             case 457:
-                if ( target && target != ply ) {
+                if ( target && target != ply && target.IsPlayer() ) {
                     local dir = ply.EyeAngles().Forward();
                     p.damage = p.damage * 0.70;
 
@@ -160,6 +200,7 @@ function applyRebalance(p){
 
     ply.RemoveCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
     setInScope(ply, "recentHits", []);
+    setInScope(ply, "dragonsFuryBuff", null);
 
     for ( local i = 0; i < 7; i++ ) {
         local wep = NetProps.GetPropEntityArray(ply, "m_hMyWeapons", i)
@@ -190,10 +231,14 @@ function processAttack(ply, type) {
         }
     }
 
-    if ( itemIndex == 1178 && type == 2 && baseAmmo > 20 ) {
+    if ( itemIndex == 1178 && type == 2 ) {
         local count = 0;
         local rh = rhGet(ply);
-        local curHealth = ply.GetHealth();
+
+        if ( ply.GetHealth() < 15 ) {
+            ply.ViewPunch(QAngle(0,10,0));
+            return;
+        }
 
         while ( rh.len() > 0 ) {
             local p = rh.pop();
@@ -201,26 +246,30 @@ function processAttack(ply, type) {
             if ( weapon != p.weapon ) continue; // Must be the same weapon.
             if ( target && target.InCond(Constants.ETFCond.TF_COND_BURNING) && target.GetHealth() > 0 ) {
                 target.RemoveCond(Constants.ETFCond.TF_COND_BURNING);
-                ply.AddCond(Constants.ETFCond.TF_COND_BURNING);
+                target.TakeDamage( 15, Constants.FDmgType.DMG_SONIC, ply );
+                target.AddCondEx( Constants.ETFCond.TF_COND_STUNNED, 0.56, ply );
+                target.AddCondEx( Constants.ETFCond.TF_COND_FREEZE_INPUT, 0.55, ply );
                 count++;
             }
         }
 
         if ( count > 0 ) {
             // Play a cool effect.
+            ply.ViewPunch(QAngle(10,0,0));
             DispatchParticleEffect("rd_robot_explosion", ply.GetOrigin(), Vector(0,0,0));
 
-            ply.ViewPunch(QAngle(10,0,0));
-            weapon.AddAttribute("hidden primary max ammo bonus", 0.075, -1);
-            ply.Regenerate(true);
+            ply.TakeDamage(15, Constants.FDmgType.DMG_BURN, ply);
+            ply.AddCondEx( Constants.ETFCond.TF_COND_BLAST_IMMUNE, 2, ply );
+            ply.AddCondEx( Constants.ETFCond.TF_COND_PREVENT_DEATH, 2, ply );
+            ply.AddCustomAttribute("move speed bonus", 1.5, 2.5);
 
-            // Undo the regen... (kinda)
-            ply.SetHealth(curHealth);
-            ply.TakeDamage(1, Constants.FDmgType.DMG_BURN, ply);
-            weapon.RemoveAttribute("hidden primary max ammo bonus");
+            ClientPrint(ply, 3, "\x000700FFA1[[ FEEL THE DRAGONS RAGE ] x" + count + "]");
 
             setInScope(ply, "recentHits", []);
-            ply.AddCondEx(Constants.ETFCond.TF_COND_CRITBOOSTED, count, weapon);
+            setInScope(ply, "dragonsFuryBuff", { mult = count, ammo = count, weapon = weapon, time = Time() });
+        } else {
+            ply.ViewPunch(QAngle(0,10,0));
+            ClientPrint(ply, 3, "\x0007FF3F3F[[ NOT READY ]]");
         }
     }
 }
