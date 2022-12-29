@@ -109,9 +109,17 @@ hook <-
 local bfx_jobs = [];
 job <-
 {
-    clock = Time()
+    isCreated = false
+
+    function Destroy() {
+        local e = null;
+        while( e = Entities.FindByName(e, "bfx_job_processor")  ) {
+            e.Kill();
+        }
+    }
 
     function Create() {
+        job.Destroy();
         local e = SpawnEntityFromTable("info_target", {
             classname = "move_rope",
             targetname = "bfx_job_processor"
@@ -120,23 +128,32 @@ job <-
         if ( e.ValidateScriptScope() ) {
             // There doesn't seem to be a way to use a proper GameTick think hook.
             e.GetScriptScope()["Think"] <- function() {
-                if ( job.clock > Time() ) return;
                 while( bfx_jobs.len() > 0 ) {
                     local callback = bfx_jobs.pop();
-                    callback();
+                    if ( Time() > callback.time ) {
+                        callback.run();
+                    } else {
+                        // Not time to run yet, add it back into the list.
+                        bfx_jobs.push(callback);
+                    }
                 }
             }
             AddThinkToEnt(e, "Think");
         }
+        job.isCreated = true;
     }
 
-    function Add(callback) {
-        bfx_jobs.push(callback);
-        job.clock = Time() + 0.03;
-    }
-
-    function startAt( time ) {
-        job.clock = time;
+    function Add(callback, runAfter = 0) {
+        local time = Time()
+        if ( runAfter > 0 ) {
+            time = time + (runAfter/1000)
+        }
+        bfx_jobs.push(
+            {
+                run = callback,
+                time = time
+            }
+        );
     }
 }
 
@@ -180,6 +197,10 @@ function createThink(callback, id = "base") {
         e.GetScriptScope()["Think"] <- callback;
         AddThinkToEnt(e, "Think");
     }
+}
+
+function verifyEntity(ent) {
+    return (ent && ent.IsValid());
 }
 
 function IncludeScriptPrint(file, scope = null) {
