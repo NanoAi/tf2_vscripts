@@ -9,6 +9,11 @@ function OnGameEvent_post_inventory_application(p) {
     hook.Call("ge_post_inventory_application", p);
 }
 
+function OnGameEvent_player_say(p)
+{
+	hook.Call("ge_player_say", p);
+}
+
 function OnGameEvent_player_spawn(p) {
     hook.Call("ge_player_spawn", p);
 }

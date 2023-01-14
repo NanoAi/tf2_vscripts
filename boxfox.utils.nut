@@ -118,6 +118,14 @@ job <-
         }
     }
 
+    function Check() {
+        local e = null;
+        while( e = Entities.FindByName(e, "bfx_job_processor")  ) {
+            return true;
+        }
+        return false;
+    }
+
     function Create() {
         job.Destroy();
         local e = SpawnEntityFromTable("info_target", {
@@ -128,7 +136,7 @@ job <-
         if ( e.ValidateScriptScope() ) {
             // There doesn't seem to be a way to use a proper GameTick think hook.
             e.GetScriptScope()["Think"] <- function() {
-                while( bfx_jobs.len() > 0 ) {
+                if ( bfx_jobs.len() > 0 ) {
                     local callback = bfx_jobs.pop();
                     if ( Time() > callback.time ) {
                         callback.run();
@@ -154,24 +162,6 @@ job <-
                 time = time
             }
         );
-    }
-}
-
-function onEntityTick(callback) {
-    local e = SpawnEntityFromTable("info_target", {
-        classname = "move_rope",
-        targetname = "bfx_info_tick"
-    });
-    printl( e.ValidateScriptScope() );
-    // Activate the think hook.
-    if ( e.ValidateScriptScope() ) {
-        // There doesn't seem to be a way to use a proper GameTick think hook.
-        e.GetScriptScope()["Think"] <- function() {
-            Think = null;
-            callback();
-            e.Kill();
-        }
-        AddThinkToEnt(e, "Think");
     }
 }
 
