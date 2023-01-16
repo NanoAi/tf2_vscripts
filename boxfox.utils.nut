@@ -193,6 +193,10 @@ function verifyEntity(ent) {
     return (ent && ent.IsValid());
 }
 
+function checkEnt(ent) {
+    return verifyEntity(ent);
+}
+
 function IncludeScriptPrint(file, scope = null) {
     chatPrint(null, "  Loading: " + file);
     IncludeScript(file, scope);

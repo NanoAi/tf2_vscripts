@@ -3,6 +3,7 @@ local w = init_weapon();
 w.init = function( ply, weapon ) {
     weapon.RemoveAttribute("airblast cost increased");
     weapon.AddAttribute("airblast cost increased", 1, -1);
+    weapon.AddAttribute("SPELL: Halloween green flames", 1, -1);
 }
 
 w.onTakeDamage = function(ply, target, dmgTotal, p) {

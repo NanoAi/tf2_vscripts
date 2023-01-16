@@ -15,7 +15,9 @@ local dict = {
     [1098] = "classic",
     [638] = "sharp-dresser",
     [230] = "sydney-sleeper",
-    [415] = "reserve-shooter"
+    [415] = "reserve-shooter",
+    [528] = "short-circuit",
+    [1153] = "panic-attack"
 }
 
 local mem = {}
@@ -25,6 +27,7 @@ function init_weapon() {
         function init( ply, weapon ){}
         onTakeDamage = false
         onAttackClick = false
+        ffOverride = -1
     }
 }
 
@@ -65,8 +68,20 @@ function processDamage(ply, target, dmgTotal, p) {
     if ( !p.weapon ) return;
     local id = getItemIndex(p.weapon);
     if ( id in mem ) {
+        if ( checkEnt(target) && (ply.IsPlayer() && target.IsPlayer()) ) {
+            if ( ply.GetTeam() == target.GetTeam() ) {
+                p.is_friendly_fire <- true;
+            } else {
+                p.is_friendly_fire <- false;
+            }
+        }
         if ( mem[id].onTakeDamage ) {
             mem[id].onTakeDamage(ply, target, dmgTotal, p);
+        }
+        if ( mem[id].ffOverride > -1 && p.is_friendly_fire ) {
+            p.damage = mem[id].ffOverride;
+            p.damage_bonus = 0;
+            p.crit_type = 0;
         }
     }
 }
