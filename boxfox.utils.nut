@@ -50,6 +50,27 @@ function plyIsJumping(ply) {
   }
 }
 
+function plyHeal(target, amount) {
+  if (amount < 0) {
+    return
+  }
+
+  if ( target && target.IsValid() ) {
+    local maxHealth = target.GetMaxHealth()
+    local curHealth = target.GetHealth()
+    local newHealth = curHealth + amount
+
+    // Do not allow to heal more then max health.
+    // Note 1: This also means that this function can not over heal.
+    // Note 2: Does not show healing numbers.
+    if (newHealth > maxHealth) {
+      target.SetHealth(maxHealth)
+    } else {
+      target.SetHealth(newHealth)
+    }
+  }
+}
+
 function plyIsFriendly(attacker, victim) {
   if ( attacker != victim && attacker.GetTeam() == victim.GetTeam() ) {
     return true;
@@ -59,6 +80,19 @@ function plyIsFriendly(attacker, victim) {
 
 function getItemIndex(item) {
   return NetProps.GetPropInt(item, "m_AttributeManager.m_Item.m_iItemDefinitionIndex");
+}
+
+function InjectPlayerHelper(ply) {
+  ply.prototype.heal = function(amount) {
+    return plyHeal(this, amount)
+  }
+  ply.prototype.isFriendly = function(target) {
+    return plyIsFriendly(this, target)
+  }
+  ply.prototype.isJumpingEx = function() {
+    return plyIsJumping(this)
+  }
+  return ply
 }
 
 // if ( !("bxfx_Hooks" in this) ) bxfx_Hooks <- {};

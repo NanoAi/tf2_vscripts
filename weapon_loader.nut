@@ -2,13 +2,11 @@ clearThink();
 IncludeScript("weapons_dir.nut", this);
 
 function onClassDamage(ply) {
-  if ( ply.IsPlayer() ) {
-    local plyClass = ply.GetPlayerClass();
-    switch(plyClass) {
-      case Constants.ETFClass.TF_CLASS_PYRO:
-        ply.AddCustomAttribute("move speed bonus", 1.15, 1);
-        break;
-    }
+  local plyClass = ply.GetPlayerClass();
+  switch(plyClass) {
+    case Constants.ETFClass.TF_CLASS_PYRO:
+      ply.AddCustomAttribute("move speed bonus", 1.15, 1);
+      break;
   }
 }
 
@@ -18,10 +16,25 @@ hook.Add("sh_OnTakeDamage", "weaponsfix.nut", function(p) {
   local target = p.const_entity;
   local dmgTotal = p.damage + (p.damage_bonus || 0);
 
-  if ( !verifyEntity(ply) ) { return; }
+  if ( !ply ) { return; }
   if ( p.weapon ) {
     onClassDamage(ply);
     processDamage(ply, target, dmgTotal, p);
+  }
+
+  local invEffects = getInScope(ply, "inventoryEffects");
+  if (typeof invEffects == "array") {
+    foreach( effect in invEffects ){
+      switch(effect) {
+        case 1:
+          if (verifyEntity(target) && target.InCond(Constants.ETFCond.TF_COND_BURNING)) {
+            xCond.set(ply, 0, (function (ply) {
+              plyHeal(ply, 5)
+            }), 1);
+          }
+          break;
+      }
+    }
   }
 });
 
@@ -31,7 +44,9 @@ function applyRebalance(p){
 
   ply.RemoveCond(Constants.ETFCond.TF_COND_HALLOWEEN_TINY);
   setInScope(ply, "recentHits", []);
-  setInScope(ply, "dragonsFuryBuff", null);
+  setInScope(ply, "inventoryEffects", []);
+  setInScope(ply, "customConditions", {});
+  setInScope(ply, "dragonsFuryBuff", null); // Specific to Dragons Fury example.
 
   for ( local i = 0; i < 7; i++ ) {
     local wep = NetProps.GetPropEntityArray(ply, "m_hMyWeapons", i)
@@ -73,6 +88,8 @@ function hookThink(){
     if ( !attack1 && !attack2 && getInScope(ply, "isAttacking") ) {
       setInScope(ply, "isAttacking", null);
     }
+
+    xCond.tick(ply);
   }
 }
 

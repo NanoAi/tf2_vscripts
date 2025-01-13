@@ -95,3 +95,57 @@ function processAttack(ply, weapon, lookDir, type) {
     }
   }
 }
+
+class CustomConditions {
+  constructor() {}
+
+  function set(ply, cond, func, duration) {
+    local conditions = getInScope(ply, "customConditions");
+    local data = {
+      ply = ply,
+      time = Time(),
+      tick = func,
+      duration = duration
+    }
+    conditions[cond] <- data;
+    setInScope(ply, "customConditions", conditions);
+  }
+
+  function clear(ply) {
+    setInScope(ply, "customConditions", []);
+  }
+
+  function remove(cond) {
+    local rebuild = {};
+    local conditions = getInScope(ply, "customConditions");
+    foreach( data in conditions ) {
+      local expires = data.time + data.duration
+      if (data.cond == cond || expires < Time()) {
+        continue;
+      }
+      rebuild.push(data)
+    }
+    setInScope(ply, "customConditions", rebuild);
+  }
+
+  function tick(ply) {
+    local rebuild = {};
+    local conditions = getInScope(ply, "customConditions");
+    if (typeof conditions != "table") return;
+    foreach( key, data in conditions ) {
+      local expires = data.time + data.duration;
+      if (expires < Time()) {
+        continue;
+      }
+      data.tick(data.ply);
+      rebuild[key] <- data;
+    }
+    setInScope(ply, "customConditions", rebuild);
+  }
+
+  function get() {
+    return getInScope(ply, "customConditions");
+  }
+}
+
+xCond <- CustomConditions();
